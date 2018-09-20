@@ -1,0 +1,6 @@
+conda install numpy scipy pandas matplotlib flask scikit-learn jupyter --yes
+
+conda install -c conda-forge tweepy --yes
+
+conda install -c conda-forge python-dotenv --yes
+

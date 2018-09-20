@@ -24,7 +24,7 @@ access_secret = os.getenv('TWITTER_ACCESS_SECRET')
 auth = OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)
 
-api = tweepy.API(auth, wait_on_rate_limit=True)
+api = tweepy.API(auth, retry_count=3, retry_delay=5, retry_errors=set([401, 404, 500, 503]), wait_on_rate_limit=True)
 
 
 # In[2]:
@@ -33,7 +33,6 @@ api = tweepy.API(auth, wait_on_rate_limit=True)
 
 Emojis0 = "😄 😃 😀 😊 ☺ 😉 😍 😘 😚 😗 😙 😜 😝 😛 😳 😁 😔 😌 😒 😞 😣 😢 😂 😭 😪 😥 😰 😅 😓 😩 😫 😨 😱 😠 😡 😤 😖 😆 😋 😷 😎 😴 😵 😲 😟 😦 😧 😈 👿 😮 😬 😐 😕 😯 😶 😇 😏 😑"
 Emojis = Emojis0.replace(" ", "")
-
 
 # In[3]:
 
@@ -44,7 +43,7 @@ Emojis = Emojis0.replace(" ", "")
 numberOfTweets = 5000
 
 i = 0
-for keyword in Emojis:
+for keyword in Emojis[5:58]:
     # track timing
     t = time.time()
     
