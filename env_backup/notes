@@ -1,0 +1,3 @@
+# dash/flask environment broke after installing dotenv through conda-forge...
+# worked again after removing just that with something like 'conda remove -c conda-forge python-dotenv'
+# dash now unnecessarily installed on insight environment

@@ -40,10 +40,11 @@ Emojis = Emojis0.replace(" ", "")
 #%%time
 #keyword = "😍" # "😋"
 
-numberOfTweets = 1000
+numberOfTweets = 5000
 
+Emojis = "😡"
 i = 0
-for keyword in Emojis[5:58]:
+for keyword in Emojis:
     # track timing
     t = time.time()
     

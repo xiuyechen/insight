@@ -40,10 +40,10 @@ Emojis = Emojis0.replace(" ", "")
 #%%time
 #keyword = "😍" # "😋"
 
-numberOfTweets = 1000
+numberOfTweets = 2
 
 i = 0
-for keyword in Emojis[5:58]:
+for keyword in Emojis[1:2]:
     # track timing
     t = time.time()
     
@@ -70,9 +70,9 @@ for keyword in Emojis[5:58]:
             print(str(n)+' ', end="")
 
     # save file
-    #with open('outfile'+keyword, 'wb') as fp:
+    #with open('outfile’+keyword, 'wb') as fp:
     
-    with open(os.path.expanduser("~/Dropbox/insight_datadir/"+'outfile'+keyword), 'wb') as fp:
+    with open(os.path.expanduser("~/Dropbox/insight_datadir/"+'outfile0’+keyword), 'wb') as fp:
         pickle.dump(itemlist, fp)
     
     # print time
