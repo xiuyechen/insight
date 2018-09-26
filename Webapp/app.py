@@ -73,7 +73,7 @@ app.layout = html.Div(children=[ # style={'backgroundColor': colors['background'
     ),
 
     dcc.Input(
-        id='input-text', value='chicken farm', type='search', style={
+        id='input_text', value='chicken farm', type='search', style={
             'textAlign': 'left',
             'width' : 600,
             'fontSize': 18,
@@ -81,7 +81,7 @@ app.layout = html.Div(children=[ # style={'backgroundColor': colors['background'
               }),
     
     dcc.RadioItems(
-        id='input-emoji',
+        id='radio_emoji',
         options=[
             {'label': '😃  ', 'value': 'emoji1'},
             {'label': '😓  ', 'value': 'emoji2'},
@@ -98,16 +98,45 @@ app.layout = html.Div(children=[ # style={'backgroundColor': colors['background'
 
 ])
 
+"""
 @app.callback(
-    Output('table-container', 'children'), 
-    [Input('input-text', 'value')]
-)
-def update_table(input_value):
-    df = google_search(input_value)
+    Output('radio_emoji', 'children'),[ 
+    Input('input_text', 'value')])
+def update_RadioItems(input_text,radio_emoji):
+    #df = google_search(input_value)
+    
+    options=[
+            {'label': '😃  ', 'value': 'emoji1'},
+            {'label': '😓  ', 'value': 'emoji2'},
+            {'label': '😡  ', 'value': 'emoji3'}
+        ],
     
     # update RadioItems (emojis options)
-    
+    if radio_emoji=='emoji1':
+        print('emoji1')
+        df = google_search(input_text)
+    elif radio_emoji=='emoji2':
+        fakedata = [{'select':2}]
+        df = pd.DataFrame(fakedata)
     return generate_table(df)
+"""
+
+@app.callback(
+    Output('table-container', 'children'),[ 
+    Input('input_text', 'value'),
+    Input('radio_emoji','value')])
+def update_table(input_text,radio_emoji):
+    #df = google_search(input_value)
+    
+    # update RadioItems (emojis options)
+    if radio_emoji=='emoji1':
+        print('emoji1')
+        df = google_search(input_text)
+    elif radio_emoji=='emoji2':
+        fakedata = [{'select':2}]
+        df = pd.DataFrame(fakedata)
+    return generate_table(df)
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
