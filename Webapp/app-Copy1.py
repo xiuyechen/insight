@@ -1,15 +1,43 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, State, Output, Event
+from dash.dependencies import Input, Output
 import pprint
 from googleapiclient.discovery import build
 import pandas as pd
 import pickle, os
 import emoji
 import collections 
-import datetime
 
+#################
+# load files
+
+# load google query results
+fullfile = os.path.expanduser("~/Dropbox/insight/Google/"+'Song99Qs.p')
+with open(fullfile, 'rb') as fp:
+    Q = pickle.load(fp)
+song_names = list(Q.keys())
+
+# load model trained from twitter data
+from sklearn.feature_extraction.text import TfidfVectorizer
+vectorizer = TfidfVectorizer(ngram_range=(1, 3), analyzer='char',
+                             use_idf=False)
+
+from sklearn.linear_model import Perceptron
+from sklearn.pipeline import Pipeline
+clf = Pipeline([
+    ('vec', vectorizer),
+    ('clf', Perceptron(tol=1e-3)),
+])
+fullfile = os.path.expanduser("~/Dropbox/insight_side/"+'clf_0927.p') # perceptron
+with open(fullfile, 'rb') as fp:
+    clf = pickle.load(fp)
+
+# load my emoji list
+fullfile = os.path.expanduser("~/Dropbox/insight/Emoji/"+'mySmileys.p')
+with open(fullfile, 'rb') as fp:
+    emoji_list = pickle.load(fp)
+len(emoji_list)
 #################
 # custom functions
 def google_search(input_value):
@@ -109,7 +137,6 @@ colors = {
 
 list_of_images = [1,2,3]
 
-# app.config.suppress_callback_exceptions = True
 app.layout = html.Div(children=[ # style={'backgroundColor': colors['background']}, 
     html.H1(
         children='Google it...',
@@ -127,10 +154,6 @@ app.layout = html.Div(children=[ # style={'backgroundColor': colors['background'
             'marginBottom': 20, 
               }),
     
-    #html.Button(id='submit', type='submit', children='ok'),
-    html.Button(id='submit-button', n_clicks=0, children='Submit'),
-    
-    html.Div(id='radio-keeper', style={'width': '100%'}),
     dcc.RadioItems(
         id='radio_emoji',
         options=[
@@ -146,113 +169,74 @@ app.layout = html.Div(children=[ # style={'backgroundColor': colors['background'
     
     #html.Img(id='image'),
     
-    #html.Div(id='table-container')
-    html.Div([
+    html.Div(id='table-container')
 
-    html.Div(id='table1-container', 
-             style={'width': '49%', 'display': 'inline-block'}),
-    html.Div(id='table2-container', 
-             style= {'width': '49%', 'display': 'inline-block'})
-])
-    
 ])
 
-    
-# @app.callback(
-#     Output('radio-keeper', 'children'), [], 
-#     [State('input_text', 'value')], [Event('submit', 'click')])
-# def update_radioItems(state):
-# #     return "callback received value: {}".format(state)
-
-
-
-# # @app.callback(
-# #     Output('radio-keeper','children'),
-# #     [Input('input_text', 'value')])
-# # def update_radioItems(input_text):
-#     #df = google_search(input_value)
-#     # if input_text == 'Despacito':
-# #     Res = Q.get('Despacito')
+@app.callback(
+    Output('radio_emoji', 'options'),
+    [Input('input_text', 'value')])
+def update_radioItems(input_text):
+    #df = google_search(input_value)
+    # if input_text == 'Despacito':
+    Res = Q.get('Despacito')
         
-# #     # get 10 pages, combine emojis 
-# #     # not all data have 100 results 
-# #     Labels = []
-# #     for i in range(len(Res)):
-# #         res = Res[i]
-# #         if 'items' in res.keys():
-# #             strList = parse_content(res)
-# #             predicted = clf.predict(strList)
-# #             labels = get_labels_from_predicted(predicted,emoji_list)
-# #             Labels = Labels + labels
+    # get 10 pages, combine emojis 
+    # not all data have 100 results 
+    Labels = []
+    for i in range(len(Res)):
+        res = Res[i]
+        if 'items' in res.keys():
+            strList = parse_content(res)
+            predicted = clf.predict(strList)
+            labels = get_labels_from_predicted(predicted,emoji_list)
+            Labels = Labels + labels
 
-# #     # SORT EMOJIS        
-# #     freq = collections.Counter(Labels) 
+    # SORT EMOJIS        
+    freq = collections.Counter(Labels) 
 
-# #     X = [] # emoji
-# #     Y = [] # count occurrence
-# #     for key, value in freq.items(): 
-# #         X.append(key)
-# #         Y.append(value)
-# #         # print(key + " -> " + str(value))
+    X = [] # emoji
+    Y = [] # count occurrence
+    for key, value in freq.items(): 
+        X.append(key)
+        Y.append(value)
+        # print(key + " -> " + str(value))
 
-# #     keydict = dict(zip(X, Y))
-# #     X.sort(key=keydict.get,reverse=True)
-# #     top3 = X[0:3]
+    keydict = dict(zip(X, Y))
+    X.sort(key=keydict.get,reverse=True)
+    top3 = X[0:3]
     
+    return [{'label': '(all)  ', 'value': 'emoji0'},
+            {'label': top3[0]+'  ', 'value': 'emoji1'},
+            {'label': top3[1]+'  ', 'value': 'emoji2'},
+            {'label': top3[2]+'  ', 'value': 'emoji3'}]
 
-#     a = datetime.datetime.now()
-#     top3 = [a.hour,a.minute,a.second]
+#####    
+@app.callback(
+    Output('table-container', 'children'),[ 
+    Input('input_text', 'value'),
+    Input('radio_emoji','value')])
+def update_table(input_text,radio_emoji,Q,clf):
+    Res = Q.get('Despacito')
+    strList = parse_content(Res[0])
+    predicted = clf.predict(strList)
+    df = parse_return_annotated(Res[0],labels)
     
-#     return dcc.RadioItems(
-#          id='radio_emoji',
-#          options=[
-#              {'label': '(all)  ', 'value': 'emoji0'},
-#              {'label': top3[0]+'  ', 'value': 'emoji1'},
-#              {'label': top3[1]+'  ', 'value': 'emoji2'},
-#              {'label': top3[2]+'  ', 'value': 'emoji3'}
-#          ],
-#          value='emoji0',
-#          labelStyle={'display': 'inline-block'}, style={
-#             'fontSize': 18}
-#      )
+    # update RadioItems (emojis options)
+    if radio_emoji=='emoji1':
+        # print('emoji1') #?
+        strList = parse_content(Res[0])
+        predicted = clf.predict(strList)
+        labels = get_labels_from_predicted(predicted,emoji_list)
+        df = parse_return_annotated(Res[0],labels)
 
-#####  
-@app.callback(Output('table1-container', 'children'),
-              Input('submit-button', 'n_clicks'),
-              State('input_text', 'value'))
-def update_table1(n_clicks, input_text):
-#     return u'''
-#         The Button has been pressed {} times,
-#         Input 1 is "{}",
-#         and Input 2 is "{}"
-#     '''.format(n_clicks, input1, input2)
-
-    a = datetime.datetime.now()
-    fakedata = [{'hour':a.hour},{'second':a.second}]
-    df = pd.DataFrame(fakedata)
-    
-
-#     Res = Q.get('Despacito')
-#     strList = parse_content(Res[0])
-#     predicted = clf.predict(strList)
-#     df = parse_return_annotated(Res[0],labels)
-    
-#     # update RadioItems (emojis options)
-#     if radio_emoji=='emoji1':
-#         # print('emoji1') #?
-#         strList = parse_content(Res[0])
-#         predicted = clf.predict(strList)
-#         labels = get_labels_from_predicted(predicted,emoji_list)
-#         df = parse_return_annotated(Res[0],labels)
-
-#         # make df with annotation!
-#         #df = google_search(input_text)
-#     elif radio_emoji=='emoji2':
-#         fakedata = [{'select':2}]
-#         df = pd.DataFrame(fakedata)
+        # make df with annotation!
+        #df = google_search(input_text)
+    elif radio_emoji=='emoji2':
+        fakedata = [{'select':2}]
+        df = pd.DataFrame(fakedata)
     return generate_table(df)
 
-app.config['suppress_callback_exceptions']=True
 # @app.callback(
 #     Output('table-container', 'children'), 
 #     [Input('input_text', 'value')]

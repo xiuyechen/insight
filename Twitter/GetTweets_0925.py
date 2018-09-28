@@ -37,13 +37,13 @@ api = tweepy.API(auth, retry_count=3, retry_delay=5, retry_errors=set([401, 404,
 #Emoji_list = ['😠', '😯', '😴', '😇', '😝', '😡', '🤡', '😵', '🤥', '🤢', '🙁', '🤠', '🤐', '🙃', '😬', '😜', '😳', '😓', '😒', '😟', '☺️', '😢', '☹️', '😤', '🤧', '😖', '😨', '😞', '😩', '😌', '😲', '🤒', '😔', '😰', '🤕', '😮', '😫', '😛', '🤑', '😦', '😱', '🤓', '😕', '😭', '😪', '😧', '😷', '🤤']
 
 # In[3]:
-Emoji_list = ['😰', '🤕', '😮', '😫', '😛', '🤑', '😦', '😱', '🤓', '😕', '😭', '😪', '😧', '😷', '🤤']
+Emoji_list = ['🤥'] # '😏😚',#['😰', '🤕', '😮', '😫', '😛', '🤑', '😦', '😱', '🤓', '😕', '😭', '😪', '😧', '😷', '🤤']
 
 
 #%%time
 #keyword = "😍" # "😋"
 
-numberOfTweets = 5000
+numberOfTweets = 2000
 
 i = 0
 for keyword in Emoji_list:
@@ -75,7 +75,7 @@ for keyword in Emoji_list:
     # save file
     #with open('outfile'+keyword, 'wb') as fp:
     
-    with open(os.path.expanduser("~/Dropbox/insight_datadir/5k_0924/"+"outfile"+keyword+".p"), 'wb') as fp:
+    with open(os.path.expanduser("~/Dropbox/insight_datadir/"+"outfile"+keyword+".p"), 'wb') as fp:
         pickle.dump(itemlist, fp)
     
     # print time
