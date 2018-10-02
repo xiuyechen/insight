@@ -3,6 +3,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+import glob
 
 # import dash
 # import dash_core_components as dcc
@@ -15,13 +16,17 @@ import pickle, os
 import emoji
 import collections 
 import datetime
+from dotenv import load_dotenv
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 ################# load files ###########
 
+load_dotenv()
+insight_datadir = os.getenv('INSIGHT_DATADIR')
+    
 # load google query results
-fullfile = os.path.expanduser("~/Dropbox/insight/Google/"+'Song10Qs.p')
+fullfile = os.path.expanduser(insight_datadir + 'Song10Qs.p')
 with open(fullfile, 'rb') as fp:
     Q = pickle.load(fp)
 song_names = list(Q.keys())
@@ -37,12 +42,12 @@ from sklearn.pipeline import Pipeline
 #     ('vec', vectorizer),
 #     ('clf', Perceptron(tol=1e-3)),
 # ])
-fullfile = os.path.expanduser("~/Dropbox/insight_side/"+'clf_0927.p') # perceptron
+fullfile = os.path.expanduser(insight_datadir + 'clf_0927.p') # perceptron
 with open(fullfile, 'rb') as fp:
     clf = pickle.load(fp)
 
 # load my emoji list
-fullfile = os.path.expanduser("~/Dropbox/insight/Emoji/"+'mySmileys.p')
+fullfile = os.path.expanduser(insight_datadir + 'mySmileys.p')
 with open(fullfile, 'rb') as fp:
     emoji_list = pickle.load(fp)
 len(emoji_list)
@@ -56,13 +61,11 @@ def google_search_json(query,page_ix):
      #   page_ix = 1
     start_ix = 10*(page_ix-1)+1
 
-    #from dotenv import load_dotenv
-    #import os
-    #load_dotenv()
-    #my_developerKey = os.getenv('GOOGLE_DEVELOPER_KEY')
-    #customsearch_cx = os.getenv('GOOGLE_CUSTOM_SEARCH_ENGINE_CX')
-    my_developerKey = 'AIzaSyBUCKZDkUQTQWSjpqspjDqheeqWITRvNPA'
-    customsearch_cx = '005602575294155670075:voquhyomtdq'
+    load_dotenv()
+    my_developerKey = os.getenv('GOOGLE_DEVELOPER_KEY')
+    customsearch_cx = os.getenv('GOOGLE_CUSTOM_SEARCH_ENGINE_CX')
+#     my_developerKey = 'AIzaSyBUCKZDkUQTQWSjpqspjDqheeqWITRvNPA'
+#     customsearch_cx = '005602575294155670075:voquhyomtdq'
 
 
     service = build("customsearch", "v1",
@@ -172,14 +175,14 @@ def google_search_10pages(query):
     Q[query] = Res
 
     # save history # crude
-    fullfile = os.path.expanduser("~/Dropbox/insight/Google/history/" + query + '.p')
+    fullfile = os.path.expanduser(insight_datadir + "history/" + query + '.p')
     with open(fullfile, 'wb') as fp:
         pickle.dump(Q, fp)
     
     return Res
 
 def get_past_queries():
-    mydir = os.path.expanduser("~/Dropbox/insight/Google/history/")
+    mydir = os.path.expanduser(insight_datadir + "history/")
     past_Q = []
     for file in os.listdir(mydir):
         if file.endswith(".p"):
@@ -192,20 +195,20 @@ def get_search_Res(query):
 
     if query in past_Q:
         # load 
-        fullfile = os.path.expanduser("~/Dropbox/insight/Google/history/" + query + '.p')
+        fullfile = os.path.expanduser(insight_datadir + "history/" + query + '.p')
         with open(fullfile, 'rb') as fp:
             Q = pickle.load(fp)
             Res = Q.get(query)
-#     else:
-#         try:
-#             Res = google_search_10pages(query)
-#         except:
-#             import datetime
-#             a = datetime.datetime.now()
-#             ix = a.second % 10
-#             key = list(Q)[ix] # load a random query out of the 10 samples loaded
-#             Res = Q.get(key)
-#             print(key)
+    else:
+        try:
+            Res = google_search_10pages(query)
+        except:
+            import datetime
+            a = datetime.datetime.now()
+            ix = a.second % 10
+            key = list(Q)[ix] # load a random query out of the 10 samples loaded
+            Res = Q.get(key)
+            print(key)
     
     # combine emojis from 10 pages (but not all data have 100 results)
     Labels = [] # this is a flat list
@@ -242,6 +245,7 @@ def get_top_labels(Labels):
 ########## MAIN ################
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config['suppress_callback_exceptions']=True
+server = app.server
 
 ########## LAYOUT #############
 app.layout = html.Div([
@@ -251,7 +255,7 @@ app.layout = html.Div([
     html.H3(children='The Sentimental Search Bar',style={'textAlign': 'center',}),
     html.H3(children='🤤😒😓😔😕🙃🤑😲☹️🙁😖😞😟😤😢😭😦😨😩😬😰😱😳😵😡😠😷🤒🤕🤢🤧😇🤠🤡🤥🤓',style={'textAlign': 'center',}),
     
-    dcc.Input(id='input-text', type='search', value='climate change is...',
+    dcc.Input(id='input-text', type='search', value='how to raise pigeons on the balcony',
              style={'width' : 600}),
     
     html.Button(id='submit-text', n_clicks=0, children='Submit'),
@@ -274,7 +278,7 @@ def update_radio(n_clicks, query):
     Res,Labels,Label_pages = get_search_Res(query)
     
     # save
-    fullfile = os.path.expanduser("~/Dropbox/insight/Google/"+'this_query.p')
+    fullfile = os.path.expanduser(insight_datadir + 'this_query.p')
     with open(fullfile, 'wb') as fp:
         pickle.dump([Res,Labels,Label_pages], fp)
 
@@ -290,7 +294,7 @@ def update_output(value):
     #Res,Labels,Label_pages = get_search_Res()
     # This should just share with update_radio
     # load
-    fullfile = os.path.expanduser("~/Dropbox/insight/Google/"+'this_query.p')
+    fullfile = os.path.expanduser(insight_datadir +'this_query.p')
     with open(fullfile, 'rb') as fp:
         Res,Labels,Label_pages = pickle.load(fp)
         
@@ -305,4 +309,4 @@ def update_output(value):
     return generate_table(df)
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True,port=5000,host='0.0.0.0')
