@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 import os
 import pickle
 import numpy as np
@@ -12,35 +6,15 @@ import emoji
 import regex
 
 
-# ## Load dataset
+# this is like a struct
+class tweet_train:
+    pass
 
-# In[2]:
-
-
-def extract_emojis(text):
-
-    emoji_list = []
-    data = regex.findall(r'\X', text)
-    for word in data:
-        if any(char in emoji.UNICODE_EMOJI for char in word):
-            emoji_list.append(word)
-
-    return emoji_list
-
-
-# In[52]:
-
-
-# load emoji list
-fullfile = os.path.expanduser("~/Dropbox/insight/Emoji/"+'mySmileys.p')
-with open(fullfile, 'rb') as fp:
-    L = pickle.load(fp)
-print(L)
-print(len(L))
-target_names = L
-
-
-# In[4]:
+# T = tweet_train()
+# T.target_names = target_names
+# T.data = D.data
+# T.filenames = D.filesnames
+# T.target = target
 
 
 class tweet_data:
@@ -54,67 +28,41 @@ class tweet_data:
 # D.numTweets = Len
 
 
-# In[36]:
-
-
-# load data
-
-fullfile = os.path.expanduser("~/Dropbox/insight/Twitter/"+'tweets_75x5k.p')
+## Load dataset
+fullfile = os.path.expanduser("~/Dropbox/insight/Twitter/"+'train_data_XV_75x5k.p')
 with open(fullfile, 'rb') as fp:
     D = pickle.load(fp)
 
-len(D.data)
-
-
-# In[5]:
-
-
-# select subset
-target_names = ['😍','😡']
-
-
-# In[9]:
-
-
-len(D.raw_data)
-
-
-# In[45]:
-
-
-# make 1D target based only on the single search-emoji
-# Len = []
-# for keyword in target_names:
-#     fullfile = os.path.expanduser("~/Dropbox/insight_datadir/5k/"+'outfile'+keyword+'.p')
-#     with open(fullfile, 'rb') as fp:
-#         itemlist = pickle.load(fp)
-#         Len.append(len(itemlist))
     
-# numTweets = 5000
+def extract_emojis(text):
+
+    emoji_list = []
+    data = regex.findall(r'\X', text)
+    for word in data:
+        if any(char in emoji.UNICODE_EMOJI for char in word):
+            emoji_list.append(word)
+
+    return emoji_list
+
+
+# load emoji list
+fullfile = os.path.expanduser("~/Dropbox/insight/Emoji/"+'mySmileys.p')
+with open(fullfile, 'rb') as fp:
+    L = pickle.load(fp)
+    
+    
+# MANUAL INPUT    
+target_names = L
+
+# make y_1d
 numEmojis = len(target_names)
 arr = []
 for i in range(numEmojis):
     arr.extend([i] * D.numTweets[i]) 
 target = np.array(arr, dtype=int)
 
-target.shape
-
 
 # ### Format Tweet dataset; split training/testing
-# 
-
-# In[61]:
-
-
-# this is like a struct
-class tweet_train:
-    pass
-
-T = tweet_train()
-T.target_names = target_names
-T.data = D.data
-T.filenames = D.filesnames
-T.target = target
 
 
 # In[8]:

@@ -3,14 +3,20 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-import glob # not used?
+import glob
+
+# import dash
+# import dash_core_components as dcc
+# import dash_html_components as html
+# from dash.dependencies import Input, State, Output, Event
+import pprint
 from googleapiclient.discovery import build
 import pandas as pd
-import pickle, os, collections, datetime, pprint
+import pickle, os
 import emoji
+import collections 
+import datetime
 from dotenv import load_dotenv
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -26,19 +32,25 @@ with open(fullfile, 'rb') as fp:
 song_names = list(Q.keys())
 
 # load model trained from twitter data
+from sklearn.feature_extraction.text import TfidfVectorizer
 vectorizer = TfidfVectorizer(ngram_range=(1, 3), analyzer='char',
                              use_idf=False)
 
-fullfile = os.path.expanduser(insight_datadir + 'clf_2step_8way_1005.p') #clf_2step_8way.p') # vectorizer, Logistic Regression
+from sklearn.linear_model import Perceptron
+from sklearn.pipeline import Pipeline
+# clf = Pipeline([
+#     ('vec', vectorizer),
+#     ('clf', Perceptron(tol=1e-3)),
+# ])
+fullfile = os.path.expanduser(insight_datadir + 'clf_0927.p') # perceptron
 with open(fullfile, 'rb') as fp:
-    vectorizer,clf = pickle.load(fp)
+    clf = pickle.load(fp)
 
 # load my emoji list
 fullfile = os.path.expanduser(insight_datadir + 'mySmileys.p')
 with open(fullfile, 'rb') as fp:
     emoji_list = pickle.load(fp)
-# len(emoji_list)
-# emoji_list = ['😀','😍','😶','😛','☹️','😠','🤣','🤓']
+len(emoji_list)
 
 ################# custom functions #############
 def google_search_json(query,page_ix):
@@ -98,10 +110,9 @@ def get_labels_from_predicted(predicted,emoji_list):
     labels = []
     labels_text = []
     for ix in list(predicted):
-        print(ix)
         e = emoji_list[ix]
         labels.append(e)
-#         labels_text.append(emoji.UNICODE_EMOJI[e])
+        labels_text.append(emoji.UNICODE_EMOJI[e])
     return labels
 
 def generate_table(dataframe, max_rows=50):
@@ -142,7 +153,6 @@ def parse_return_filtered(Res,Label_pages,label):
                 if e == label:
                     item = items[jj]
                     header = str(ii*10 + jj + 1) + " " + label
-#                     header = str(ii*10 + jj + 1) + " " + label
                     strList.append(header)
                     strList.append(item['title'])
                     strList.append(item['snippet'])
@@ -207,12 +217,7 @@ def get_search_Res(query):
         res = Res[i]
         if 'items' in res.keys():
             strList = parse_content(res)
-            if i==1:
-                print(strList)
-            XV_test = vectorizer.transform(strList)
-            predicted = clf.predict(XV_test)
-            print(len(predicted))
-            print(predicted)
+            predicted = clf.predict(strList)
             labels = get_labels_from_predicted(predicted,emoji_list)
             Labels = Labels + labels
             Label_pages.append(labels)
@@ -229,7 +234,7 @@ def get_top_labels(Labels):
     for key, value in freq.items(): 
         X.append(key)
         Y.append(value)
-#         print(key + " -> " + str(value))
+        print(key + " -> " + str(value))
     keydict = dict(zip(X, Y))
     X.sort(key=keydict.get,reverse=True)
     top_labels = X[0:3]
@@ -239,8 +244,8 @@ def get_top_labels(Labels):
 
 ########## MAIN ################
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-app.config['suppress_callback_exceptions']=True
 server = app.server
+app.config['suppress_callback_exceptions']=True
 
 ########## LAYOUT #############
 app.layout = html.Div([
