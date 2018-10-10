@@ -18,27 +18,30 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 load_dotenv()
 insight_datadir = os.getenv('INSIGHT_DATADIR')
-    
-# load google query results
-fullfile = os.path.expanduser(insight_datadir + 'Song10Qs.p')
-with open(fullfile, 'rb') as fp:
-    Q = pickle.load(fp)
-song_names = list(Q.keys())
+  
+# # load google query results
+random_q_list = ['chicken farms',
+                 'donald trump',
+                 'climate', 
+                 'Humble', 
+                 'are house centipedes good or bad',
+                 'Tibet']
+# fullfile = os.path.expanduser(insight_datadir + 'Song10Qs.p')
+# with open(fullfile, 'rb') as fp:
+#     Q_songs = pickle.load(fp)
+# song_names = list(Q_songs.keys())
 
 # load model trained from twitter data
-vectorizer = TfidfVectorizer(ngram_range=(1, 3), analyzer='char',
-                             use_idf=False)
-
-fullfile = os.path.expanduser(insight_datadir + 'clf_2step_8way_1005.p') #clf_2step_8way.p') # vectorizer, Logistic Regression
+fullfile = os.path.expanduser(insight_datadir + 'clf_2step_8way_1009.p') #clf_2step_8way.p') # vectorizer, Logistic Regression
 with open(fullfile, 'rb') as fp:
     vectorizer,clf = pickle.load(fp)
 
 # load my emoji list
-fullfile = os.path.expanduser(insight_datadir + 'mySmileys.p')
-with open(fullfile, 'rb') as fp:
-    emoji_list = pickle.load(fp)
-# len(emoji_list)
-# emoji_list = ['😀','😍','😶','😛','☹️','😠','🤣','🤓']
+# fullfile = os.path.expanduser(insight_datadir + 'mySmileys.p')
+# with open(fullfile, 'rb') as fp:
+#     emoji_list = pickle.load(fp)
+# # len(emoji_list)
+emoji_list = ['😀','🤣','😍','🙄','😛','☹️','😠','🤓']
 
 ################# custom functions #############
 def google_search_json(query,page_ix):
@@ -90,19 +93,21 @@ def parse_return_annotated(res,labels):
         strList.append(item['snippet'])
         strList.append(item['formattedUrl'])
         strList.append('... ... ... ...')
-        
+    
+    pd.set_option('display.max_colwidth', -1)
     df = pd.DataFrame(strList)
     return df
 
-def get_labels_from_predicted(predicted,emoji_list):
+def get_labels_from_predicted(predicted,y_probs,emoji_list):
     labels = []
-    labels_text = []
+    scores = []
+    i = 0
     for ix in list(predicted):
-        print(ix)
         e = emoji_list[ix]
         labels.append(e)
-#         labels_text.append(emoji.UNICODE_EMOJI[e])
-    return labels
+        scores.append(y_probs[i,ix])
+        i+=1
+    return labels, scores
 
 def generate_table(dataframe, max_rows=50):
     return html.Table( 
@@ -122,17 +127,20 @@ def generate_radio(top_labels):
             {'label': '(all)  ', 'value': -1},
             {'label': top_labels[0]+'  ', 'value': 0},
             {'label': top_labels[1]+'  ', 'value': 1},
-            {'label': top_labels[2]+'  ', 'value': 2}
+            {'label': top_labels[2]+'  ', 'value': 2},
+            {'label': top_labels[3]+'  ', 'value': 3},
+            {'label': top_labels[4]+'  ', 'value': 4}
         ],
         value = -1,
         labelStyle={'display': 'inline-block'}, style={
             'fontSize': 24}
     )
-def parse_return_filtered(Res,Label_pages,label):
+def parse_return_filtered(Res,Label_pages,label,Scores_pages):
     strList = [];
     # go through 10 pages
     for ii in range(len(Label_pages)):
         label_p = Label_pages[ii]
+        score_p = Scores_pages[ii]
         res = Res[ii]
         
         if 'items' in res.keys():
@@ -141,7 +149,7 @@ def parse_return_filtered(Res,Label_pages,label):
                 e = label_p[jj]
                 if e == label:
                     item = items[jj]
-                    header = str(ii*10 + jj + 1) + " " + label
+                    header = "  " + label #+ str(score_p[jj])
 #                     header = str(ii*10 + jj + 1) + " " + label
                     strList.append(header)
                     strList.append(item['title'])
@@ -185,6 +193,7 @@ def get_search_Res(query):
 
     if query in past_Q:
         # load 
+        print(query)
         fullfile = os.path.expanduser(insight_datadir + "history/" + query + '.p')
         with open(fullfile, 'rb') as fp:
             Q = pickle.load(fp)
@@ -193,32 +202,43 @@ def get_search_Res(query):
         try:
             Res = google_search_10pages(query)
         except:
-            import datetime
-            a = datetime.datetime.now()
-            ix = a.second % 10
-            key = list(Q)[ix] # load a random query out of the 10 samples loaded
-            Res = Q.get(key)
-            print(key)
+            print('google search failed')
+            print('original q:')
+            print(query)
+            # load 
+            query = 'sentimental search bar'
+            fullfile = os.path.expanduser(insight_datadir + "history/" + query + '.p')
+            with open(fullfile, 'rb') as fp:
+                Q = pickle.load(fp)
+                Res = Q.get(query)
+            
+#             import datetime
+#             a = datetime.datetime.now()
+#             ix = a.second % 10
+#             key = list(Q)[ix] # load a random query out of the 10 samples loaded
+#             Res = Q.get(key)
+#             print(key)
     
     # combine emojis from 10 pages (but not all data have 100 results)
     Labels = [] # this is a flat list
     Label_pages = [] # this is a list of lists, matching Res structure
+    Scores_pages = [] # prediction probability from logistic regression, organized by page
     for i in range(len(Res)):
         res = Res[i]
         if 'items' in res.keys():
             strList = parse_content(res)
-            if i==1:
-                print(strList)
+
             XV_test = vectorizer.transform(strList)
             predicted = clf.predict(XV_test)
-            print(len(predicted))
-            print(predicted)
-            labels = get_labels_from_predicted(predicted,emoji_list)
+            y_probs = clf.predict_proba(XV_test)
+            
+            labels,scores = get_labels_from_predicted(predicted,y_probs, emoji_list)
             Labels = Labels + labels
+            Scores_pages.append(scores) 
             Label_pages.append(labels)
     # text = " ".join(Labels) # this should be visualized as WordCloud!
 
-    return Res,Labels,Label_pages
+    return Res,Labels,Label_pages,Scores_pages
 
 def get_top_labels(Labels):
 #     top_labels = ['😀','😁','😂']
@@ -232,7 +252,7 @@ def get_top_labels(Labels):
 #         print(key + " -> " + str(value))
     keydict = dict(zip(X, Y))
     X.sort(key=keydict.get,reverse=True)
-    top_labels = X[0:3]
+    top_labels = X[0:5]
     
     return top_labels
 
@@ -240,6 +260,7 @@ def get_top_labels(Labels):
 ########## MAIN ################
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config['suppress_callback_exceptions']=True
+app.title = 'The sentimental search bar'
 server = app.server
 
 ########## LAYOUT #############
@@ -253,9 +274,9 @@ app.layout = html.Div([
     dcc.Input(id='input-text', type='search', value='how to raise pigeons on the balcony',
              style={'width' : 600}),
     
-    html.Button(id='submit-text', n_clicks=0, children='Submit'),
+    html.Button(id='submit-text', n_clicks=0,n_clicks_timestamp='0', children='Submit'),
     
-    html.Button(id='submit-random', n_clicks=0, children='Try a random example'),
+    html.Button(id='submit-random', n_clicks=0,n_clicks_timestamp='0', children='Try a random example'),
     
     html.Div(id='radio-container'),
     
@@ -265,17 +286,45 @@ app.layout = html.Div([
 ])
 
 ######### CALLBACKS ############
+
+@app.callback(Output('input-text', 'value'),
+              [Input('submit-random', 'n_clicks')])
+def update_randomquery(n_clicks):
+    if n_clicks>0:
+#         import datetime
+#         a = datetime.datetime.now()
+#         ix = a.second % 6
+        ix = n_clicks % 6
+        key = random_q_list[ix] # random_q_list defined at top of file
+            
+        return key
+    
+# @app.callback(Output('submit-text', 'n_clicks'),
+#               [Input('submit-random', 'n_clicks')])
+# def update_randomquery(n_clicks_input):
+# #     print(n_clicks_input)
+#     if n_clicks_input>0:
+#         return 1
+    
 # STEP 1: search and update emojis
 @app.callback(Output('radio-container', 'children'),
-              [Input('submit-text', 'n_clicks')],
+              [Input('submit-text', 'n_clicks_timestamp'),
+              Input('submit-random', 'n_clicks_timestamp'),
+              Input('submit-text', 'n_clicks'),
+              Input('submit-random', 'n_clicks')],
               [State('input-text', 'value')])
-def update_radio(n_clicks, query):
-    Res,Labels,Label_pages = get_search_Res(query)
+def update_radio(ts_text,ts_random,n_text,n_random, query):
+    if int(ts_random) > int(ts_text):
+        # Button_random was most recently clicked
+        ix = n_random % 6
+        query = random_q_list[ix] # random_q_list defined at top of file
+
+    Res,Labels,Label_pages,Scores_pages = get_search_Res(query)
     
     # save
     fullfile = os.path.expanduser(insight_datadir + 'this_query.p')
     with open(fullfile, 'wb') as fp:
-        pickle.dump([Res,Labels,Label_pages], fp)
+        pickle.dump([Res,Labels,Label_pages,Scores_pages], fp)
 
     # sort labels, find top_emojis, and make new display
     top_labels = get_top_labels(Labels)
@@ -291,7 +340,7 @@ def update_output(value):
     # load
     fullfile = os.path.expanduser(insight_datadir +'this_query.p')
     with open(fullfile, 'rb') as fp:
-        Res,Labels,Label_pages = pickle.load(fp)
+        Res,Labels,Label_pages,Scores_pages = pickle.load(fp)
         
     if int(value) == -1:
         res = Res[0]
@@ -300,7 +349,7 @@ def update_output(value):
     else:
         top_labels = get_top_labels(Labels)
         label = top_labels[int(value)]
-        df = parse_return_filtered(Res,Label_pages,label)
+        df = parse_return_filtered(Res,Label_pages,label,Scores_pages)
     return generate_table(df)
 
 if __name__ == '__main__':
